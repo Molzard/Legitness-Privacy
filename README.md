@@ -98,10 +98,10 @@ legitness-privacy/
 ### Architecture
 
 ```
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│  config.js  │────▶│  engine.js  │────▶│    Page DOM  │
-│  (rules)    │     │  (runtime)  │     │  (injected)  │
-└─────────────┘     └─────────────┘     └─────────────┘
+┌─────────────┐     ┌─────────────┐      ┌─────────────┐
+│  config.js  │────▶│  engine.js  │────▶│  Page DOM   │
+│  (rules)    │     │  (runtime)  │      │  (injected) │
+└─────────────┘     └─────────────┘      └─────────────┘
                            ▲
                     ┌──────┴──────┐
                     │  effects.js │
@@ -109,7 +109,7 @@ legitness-privacy/
                     └─────────────┘
 
 ┌─────────────┐     ┌─────────────┐
-│  popup.html │────▶│  popup.js   │◀──▶ chrome.storage.sync
+│  popup.html │────▶│  popup.js  │◀──▶ chrome.storage.sync
 │  (UI)       │     │  (controls) │
 └─────────────┘     └─────────────┘
 ```
@@ -199,4 +199,3 @@ by Gwen Stecu
 ## License
 
 This project is provided as-is for personal use. Not affiliated with Instagram, Google, OpenAI, or Anthropic.
-```
