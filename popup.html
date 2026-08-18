@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Anton&family=IBM+Plex+Mono:wght@400;500;600&family=Permanent+Marker&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-a: #ff6fae;
+            --bg-b: #8a3fd1;
+            --bg-c: #48c6ea;
+            --bg-d: #ffb37b;
+            --bg-e: #4a1a42;
+            --ink: #1c0e22;
+            --glass: rgba(28, 14, 40, 0.6);
+            --glass-strong: rgba(18, 9, 26, 0.82);
+            --redact: rgba(14, 7, 20, 0.88);
+            --stamp: #ff4f9e;
+            --stamp-bright: #ff7fc0;
+            --stamp-glow: rgba(255, 79, 158, 0.45);
+            --cyan: #4fd7f0;
+            --paper: #fdf5ef;
+            --khaki: #d9c3e2;
+            --khaki-dim: #9c81ab;
+            --line: rgba(255, 255, 255, 0.16);
+        }
+
+        html, body {
+            width: 320px;
+            background:
+                radial-gradient(circle at 12% 18%, var(--bg-a) 0%, transparent 42%),
+                radial-gradient(circle at 88% 12%, var(--bg-c) 0%, transparent 48%),
+                radial-gradient(circle at 78% 74%, var(--bg-b) 0%, transparent 55%),
+                radial-gradient(circle at 15% 82%, var(--bg-d) 0%, transparent 42%),
+                radial-gradient(circle at 50% 45%, var(--bg-e) 0%, transparent 75%),
+                var(--ink);
+            color: var(--paper);
+            font-family: 'IBM Plex Mono', 'SF Mono', monospace;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* No text cursor, no selection — this is a control panel, not a document */
+        html, body {
+            cursor: default;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        body { position: relative; overflow: hidden; }
+
+        body::before {
+            content: '';
+            position: absolute; inset: 0;
+            pointer-events: none;
+            background-image: repeating-linear-gradient(
+                0deg, rgba(255,255,255,0.02) 0px, rgba(255,255,255,0.02) 1px,
+                transparent 1px, transparent 3px
+            );
+            mix-blend-mode: overlay;
+            z-index: 5;
+        }
+
+        /* ═══ MASTHEAD ═══ */
+        .masthead {
+            position: relative;
+            padding: 16px 16px 13px;
+            border-bottom: 1px solid var(--line);
+            background: linear-gradient(180deg, rgba(14,7,20,.1) 0%, rgba(14,7,20,.4) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            overflow: hidden;
+        }
+        .masthead::before {
+            content: '';
+            position: absolute; top: -30px; right: -30px;
+            width: 150px; height: 150px;
+            background: repeating-radial-gradient(circle, var(--cyan) 0 1.5px, transparent 1.6px 9px);
+            opacity: .16; transform: rotate(-12deg);
+            pointer-events: none;
+        }
+        .masthead::after {
+            content: '';
+            position: absolute; top: -20%; right: 58px;
+            width: 3px; height: 160%;
+            background: linear-gradient(180deg, var(--stamp), var(--cyan));
+            transform: rotate(18deg);
+            opacity: .55;
+            pointer-events: none;
+        }
+        .masthead-row {
+            position: relative; z-index: 1;
+            display: flex; align-items: flex-start; justify-content: space-between;
+        }
+        .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .brand-mark { flex-shrink: 0; width: 26px; height: 26px; }
+        .brand-name {
+            font-family: 'Anton', sans-serif;
+            font-size: 14.5px; letter-spacing: 0.02em; text-transform: uppercase;
+            color: var(--paper);
+            transform: skewX(-7deg);
+            transform-origin: left bottom;
+            white-space: nowrap;
+        }
+        .brand-sub {
+            font-size: 8.5px; letter-spacing: 0.16em; text-transform: uppercase;
+            color: var(--khaki-dim); margin-top: 4px;
+        }
+
+        .seal {
+            width: 14px; height: 14px; border-radius: 50%;
+            border: 2px solid var(--khaki-dim);
+            position: relative; flex-shrink: 0; margin-top: 3px;
+            transition: border-color .3s ease, box-shadow .3s ease;
+        }
+        .seal::after {
+            content: ''; position: absolute; inset: 2.5px;
+            border-radius: 50%; background: var(--khaki-dim);
+            transition: background .3s ease;
+        }
+        .seal.on { border-color: var(--stamp); box-shadow: 0 0 7px var(--stamp-glow); }
+        .seal.on::after { background: var(--stamp); }
+        @media (prefers-reduced-motion: no-preference) {
+            .seal.on { animation: pulse 2.6s ease-in-out infinite; }
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 6px var(--stamp-glow); }
+            50% { box-shadow: 0 0 12px var(--stamp-glow); }
+        }
+
+        /* ═══ CONTENT (scrollable) ═══ */
+        #content {
+            max-height: 440px;
+            overflow-y: auto;
+            position: relative;
+        }
+        #content::-webkit-scrollbar { width: 6px; }
+        #content::-webkit-scrollbar-track { background: transparent; }
+        #content::-webkit-scrollbar-thumb { background: var(--line); border-radius: 3px; }
+        #content::-webkit-scrollbar-thumb:hover { background: var(--khaki-dim); }
+
+        /* ═══ CUT-CORNER MOTIF ═══ */
+        .cut {
+            clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+        }
+        .cut-sm {
+            clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+        }
+
+        /* ═══ DOC (site) CARD ═══ */
+        @keyframes slice-in {
+            from { clip-path: polygon(0 0, 0 0, 0 100%, 0 100%, 0 100%, 0 12px); opacity: 0; transform: translateX(-6px); }
+            to   { clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px); opacity: 1; transform: translateX(0); }
+        }
+        .doc {
+            position: relative;
+            margin: 14px;
+            border: 1px solid var(--line);
+            background: var(--glass);
+            backdrop-filter: blur(16px) saturate(140%);
+            -webkit-backdrop-filter: blur(16px) saturate(140%);
+            animation: slice-in .4s cubic-bezier(.16,1,.3,1) both;
+        }
+        .doc.armed { border-color: rgba(255, 79, 158, 0.4); }
+        @media (prefers-reduced-motion: reduce) {
+            .doc { animation: none; }
+        }
+
+        /* target-lock corner brackets, shown once a site is armed */
+        .doc::before, .doc::after {
+            content: ''; position: absolute; width: 11px; height: 11px;
+            border-color: var(--stamp); opacity: 0; transition: opacity .3s ease;
+            pointer-events: none;
+        }
+        .doc::before { top: 1px; left: 1px; border-top: 2px solid; border-left: 2px solid; }
+        .doc::after { bottom: 1px; right: 1px; border-bottom: 2px solid; border-right: 2px solid; }
+        .doc.armed::before, .doc.armed::after { opacity: 1; }
+
+        .doc-head {
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px; padding: 12px 13px;
+            border-bottom: 1px solid var(--line);
+            background: rgba(0,0,0,.15);
+            cursor: pointer;
+        }
+        .doc-id { display: flex; align-items: center; gap: 9px; min-width: 0; }
+        .doc-tag {
+            width: 26px; height: 26px; flex-shrink: 0;
+            border: 1px solid var(--khaki-dim);
+            background: var(--ink);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 12px;
+        }
+        .doc-tag img {
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            object-fit: contain;
+        }
+        .doc-meta { min-width: 0; }
+        .doc-name {
+            font-weight: 600; font-size: 12.5px; color: var(--paper);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .doc-status {
+            font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
+            color: var(--khaki-dim); margin-top: 3px;
+            transition: color .3s ease;
+        }
+        .doc.armed .doc-status { color: var(--stamp); }
+
+        /* ═══ MASTER TOGGLE — diagonal wipe-fill calling card ═══ */
+        .master-toggle {
+            position: relative; display: inline-block;
+            width: 54px; height: 26px; flex-shrink: 0;
+            border: 1.5px solid var(--khaki-dim);
+            overflow: hidden; cursor: pointer;
+            transition: border-color .25s ease;
+        }
+        .master-toggle:hover { border-color: var(--stamp); }
+        .master-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+        .mt-fill {
+            position: absolute; inset: 0;
+            background: linear-gradient(115deg, var(--cyan) 0%, var(--bg-b) 55%, var(--stamp) 100%);
+            transform-origin: left center; transform: scaleX(0);
+            transition: transform .32s cubic-bezier(.65,0,.35,1);
+        }
+        .master-toggle input:checked ~ .mt-fill { transform: scaleX(1); }
+        .mt-text {
+            position: relative; z-index: 2;
+            display: flex; align-items: center; justify-content: center; height: 100%;
+            font-family: 'Anton', sans-serif; font-size: 10.5px; letter-spacing: 0.08em;
+            color: var(--khaki); transition: color .3s ease;
+        }
+        .master-toggle input:checked ~ .mt-text { color: var(--paper); }
+        .master-toggle input:focus-visible ~ .mt-fill { outline: 2px solid var(--stamp); outline-offset: 2px; }
+
+        /* ═══ CLAUSES (rule rows) ═══ */
+        .clauses { padding: 3px 0; }
+
+        .clause {
+            position: relative;
+            display: flex; align-items: center; justify-content: space-between;
+            gap: 10px; padding: 8px 13px 8px 16px;
+            cursor: pointer;
+        }
+        .clause::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+            background: var(--stamp); transform: scaleY(0); transform-origin: center;
+            transition: transform .18s ease;
+        }
+        .clause:hover::before { transform: scaleY(1); }
+        .clause + .clause { border-top: 1px solid var(--line); }
+        .clause-label { font-size: 11.5px; color: var(--khaki); line-height: 1.35; }
+        .clause:hover { background: rgba(255,255,255,.02); }
+        .clause:hover .clause-label { color: var(--paper); }
+
+        .clause.nested { padding-left: 29px; }
+        .clause.nested .clause-label { color: var(--khaki-dim); font-size: 11px; }
+        .clause.nested-2 { padding-left: 41px; }
+        .clause.nested-2 .clause-label { color: var(--khaki-dim); font-size: 10.5px; }
+
+        .clause-group {
+            margin: 6px 13px 6px 13px;
+            padding-left: 10px;
+            border-left: 1px solid var(--line);
+        }
+        .clause-group .clause { padding: 7px 0 7px 6px; }
+        .clause-group .clause::before { left: -10px; }
+        .clause-group .clause + .clause { border-top: 1px solid rgba(255,255,255,.03); }
+        .group-tab {
+            display: flex; align-items: center; gap: 5px;
+            padding: 9px 0 5px 3px;
+            font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+            color: var(--khaki-dim);
+        }
+        .group-tab .mark { color: var(--stamp); }
+
+        /* ═══ REDACTION SWITCH (rule / option / jsRule) ═══ */
+        .rswitch {
+            position: relative; display: inline-block; flex-shrink: 0;
+            width: 42px; height: 22px; cursor: pointer;
+        }
+        .rswitch.sm { width: 30px; height: 16px; }
+        .rswitch input { position: absolute; opacity: 0; width: 0; height: 0; }
+
+        .rswitch .bar {
+            position: absolute; inset: 0;
+            border: 1.5px dashed var(--khaki-dim);
+            border-radius: 2px;
+            background: transparent;
+            transition: background .25s ease, border-color .25s ease;
+        }
+        .rswitch .bar::before {
+            content: '';
+            position: absolute; top: 50%; left: 3px;
+            width: 10px; height: 10px; margin-top: -5px;
+            border-radius: 50%;
+            background: var(--khaki-dim);
+            transition: left .28s cubic-bezier(.34,1.56,.64,1),
+                        background .25s ease, box-shadow .25s ease, transform .15s ease;
+        }
+        .rswitch.sm .bar::before { width: 7px; height: 7px; margin-top: -3.5px; left: 2px; }
+
+        .rswitch input:checked + .bar {
+            background: var(--redact);
+            border-style: solid;
+            border-color: var(--redact);
+        }
+        .rswitch input:checked + .bar::before {
+            left: calc(100% - 13px);
+            background: var(--stamp);
+            box-shadow: 0 0 0 3px var(--stamp-glow);
+        }
+        .rswitch.sm input:checked + .bar::before { left: calc(100% - 9px); }
+
+        .rswitch:active .bar::before { transform: scale(.82); }
+        .rswitch input:focus-visible + .bar { outline: 2px solid var(--stamp); outline-offset: 2px; }
+
+        /* ═══ NOT REGISTERED ═══ */
+        .no-file { padding: 34px 20px; text-align: center; }
+        .no-file-stamp {
+            display: inline-block; padding: 9px 15px;
+            border: 2px solid var(--stamp);
+            transform: rotate(-4deg);
+            position: relative;
+            color: var(--stamp);
+            font-family: 'Anton', sans-serif;
+            font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+        }
+        .no-file-stamp::before {
+            content: ''; position: absolute; inset: 3px;
+            border: 1px solid var(--stamp); opacity: .55;
+        }
+        .no-file-title {
+            margin-top: 20px; font-size: 12px; font-weight: 600; color: var(--khaki);
+        }
+        .no-file-sub {
+            margin-top: 6px; font-size: 10px; color: var(--khaki-dim); line-height: 1.6;
+        }
+        .no-file-domain {
+            display: inline-block; margin-top: 14px;
+            font-size: 9.5px; color: var(--khaki-dim);
+            background: var(--glass); border: 1px solid var(--line);
+            padding: 5px 10px;
+        }
+
+        /* ═══ FOOTER ═══ */
+        .case-footer {
+            display: flex; flex-direction: column; align-items: center; gap: 1px;
+            padding: 12px 16px 14px;
+            border-top: 1px solid var(--line);
+            background: linear-gradient(0deg, rgba(14,7,20,.35) 0%, rgba(14,7,20,.05) 100%);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+        .footer-tag {
+            font-family: 'Anton', sans-serif;
+            font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase;
+            color: var(--stamp);
+            transform: skewX(-6deg);
+        }
+        .footer-sig {
+            font-family: 'Permanent Marker', cursive;
+            font-size: 12.5px; color: var(--khaki);
+            margin-top: 1px;
+        }
+    </style>
+</head>
+<body>
+    <header class="masthead">
+        <div class="masthead-row">
+            <div class="brand">
+                <svg class="brand-mark" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2.5" y="5" width="18" height="3" rx="1.5" fill="var(--paper)"/>
+                    <rect x="2.5" y="10.5" width="12.5" height="3" rx="1.5" fill="var(--stamp)"/>
+                    <rect x="2.5" y="16" width="15.5" height="3" rx="1.5" fill="var(--paper)"/>
+                </svg>
+                <div>
+                    <div class="brand-name">Legitness Privacy</div>
+                    <div class="brand-sub">Redaction Unit &middot; v1.1.0</div>
+                </div>
+            </div>
+            <div class="seal" id="status-dot"></div>
+        </div>
+    </header>
+
+    <main id="content">
+        <div style="padding:28px;text-align:center;color:var(--khaki-dim);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;">Membuka berkas&hellip;</div>
+    </main>
+
+    <footer class="case-footer">
+        <span class="footer-tag">Got Blurred</span>
+        <span class="footer-sig">by Gwen Stecu</span>
+    </footer>
+
+    <script src="config.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>
