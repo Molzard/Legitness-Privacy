@@ -1,4 +1,3 @@
-```markdown
 # Legitness Privacy
 
 **Modular privacy & redaction toolkit for web browsers.**
