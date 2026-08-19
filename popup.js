@@ -83,9 +83,10 @@
 
         /* Head: site tag, name, status, master switch — whole row toggles master */
         h += '<div class="doc-head">';
+        var fallbackChar = esc(site.name.charAt(0));
         var iconHtml = (site.icon && site.icon.indexOf('http') === 0)
-            ? '<img src="' + esc(site.icon) + '" width="18" height="18" alt="" onerror="this.style.display=\'none\';this.parentElement.insertAdjacentText(\'afterbegin\',\'' + esc(site.name.charAt(0)) + '\')">'
-            : esc(site.icon || site.name.charAt(0));
+            ? '<img src="' + esc(site.icon) + '" width="18" height="18" alt="" data-fallback="' + fallbackChar + '">'
+            : fallbackChar;
         h += '<div class="doc-id"><span class="doc-tag">' + iconHtml + '</span>';
         h += '<div class="doc-meta"><div class="doc-name">' + esc(site.name) + '</div>';
         h += '<div class="doc-status">' + statusText + '</div></div></div>';
@@ -166,6 +167,15 @@
                 if (e.target.closest('label')) return;
                 var cb = this.querySelector('input[type="checkbox"]');
                 if (cb) cb.click();
+            });
+        }
+
+        /* Icon fallback — CSP safe (no inline onerror) */
+        var icons = document.querySelectorAll('.doc-tag img[data-fallback]');
+        for (var k = 0; k < icons.length; k++) {
+            icons[k].addEventListener('error', function() {
+                this.style.display = 'none';
+                this.parentElement.insertAdjacentText('afterbegin', this.getAttribute('data-fallback'));
             });
         }
     }

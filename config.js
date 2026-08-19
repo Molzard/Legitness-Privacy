@@ -219,7 +219,7 @@ window.LP_CONFIG = {
         /* ═══ CLAUDE ═══ */
         claude: {
             name: 'Claude',
-            icon: 'https://assets-proxy.anthropic.com/claude-ai/v2/assets/v1/ce67964e7-CAX1bqSh.png',
+            icon: 'https://claude.ai/favicon.ico',
             domain: 'claude.ai',
             rules: [
                 {
@@ -247,7 +247,7 @@ window.LP_CONFIG = {
                     group: 'Sensor Profile',
                     effects: [{ type: 'blur', amount: '12px' }],
                     selectors: [
-                        'span.w-full.truncate.text-xs.text-muted'
+                        'span.df-footer-suffix > span.df-footer-suffix-text'
                     ]
                 },
                 {
@@ -256,8 +256,7 @@ window.LP_CONFIG = {
                     default: true,
                     effects: [{ type: 'blur', amount: '12px' }],
                     selectors: [
-                        '[data-testid="sidebar-pinned"] a > div > span.truncate',
-                        '[data-testid="sidebar-recents"] a > div > span.truncate'
+                        'span.dframe-fade-label > span.inline-block'
                     ]
                 }
             ],

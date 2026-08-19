@@ -118,21 +118,48 @@
         document.head.appendChild(sty);
     }
 
-    function profileReplace(enabled, selector) {
+    function isBlurActive(styleId) {
+        var el = document.getElementById(styleId);
+        if (!el) return false;
+        var sheet = el.sheet;
+        if (!sheet) return false;
+        for (var i = 0; i < sheet.cssRules.length; i++) {
+            if (sheet.cssRules[i].style && sheet.cssRules[i].style.filter &&
+                sheet.cssRules[i].style.filter.indexOf('blur') !== -1) return true;
+        }
+        return false;
+    }
+
+    function profileReplace(enabled, selector, styleId) {
         var MARK = 'data-lp-replace';
         var els = document.querySelectorAll(selector);
-        for (var i = 0; i < els.length; i++) {
-            var el = els[i];
-            if (enabled) {
+
+        if (enabled) {
+            /* Turn ON replace */
+            for (var i = 0; i < els.length; i++) {
+                var el = els[i];
                 if (!el.hasAttribute(MARK)) el.setAttribute(MARK, el.textContent);
                 el.textContent = 'Legitness';
                 el.style.setProperty('filter', 'none', 'important');
-            } else {
-                if (el.hasAttribute(MARK)) {
-                    el.textContent = el.getAttribute(MARK);
-                    el.removeAttribute(MARK);
+            }
+        } else {
+            /* Turn OFF replace — if blur is also being applied, keep text hidden */
+            if (styleId && isBlurActive(styleId)) {
+                /* Blur is taking over — just remove the replace data, keep text hidden */
+                for (var j = 0; j < els.length; j++) {
+                    els[j].removeAttribute(MARK);
+                    els[j].style.removeProperty('filter');
                 }
-                el.style.removeProperty('filter');
+            } else {
+                /* Normal cleanup — no blur incoming */
+                for (var k = 0; k < els.length; k++) {
+                    var el2 = els[k];
+                    if (el2.hasAttribute(MARK)) {
+                        el2.textContent = el2.getAttribute(MARK);
+                        el2.removeAttribute(MARK);
+                    }
+                    el2.style.removeProperty('filter');
+                }
             }
         }
     }
@@ -143,7 +170,7 @@
         if (enabled) {
             var sty = document.createElement('style');
             sty.id = styleId;
-            sty.textContent = selector + '{filter:blur(12px)!important;transition:filter 0.3s ease;}';
+            sty.textContent = selector + '{filter:blur(12px)!important;}';
             document.head.appendChild(sty);
         }
     }
@@ -254,7 +281,7 @@
     HANDLERS.gemini = {};
 
     HANDLERS.gemini.replaceName = function(enabled) {
-        profileReplace(enabled, 'sidenav-mavatar-footer .mavatar-user-name');
+        profileReplace(enabled, 'sidenav-mavatar-footer .mavatar-user-name', 'lp-blurname-gem');
     };
 
     HANDLERS.gemini.blurName = function(enabled) {
@@ -262,10 +289,6 @@
     };
 
     HANDLERS.gemini.activeChat = function(enabled) {
-        /*
-         * CSS approach: specificity 1-2-0 > blur's 1-1-0
-         * Survives Angular re-renders (unlike inline styles)
-         */
         injectStyle('lp-active-gem', enabled ? null :
             '#sidenav-section-content-chats .title-text.gds-emphasized-body-s{filter:none!important;}'
         );
@@ -294,16 +317,134 @@
             var el = greetingEls[i];
 
             if (el.hasAttribute(GREETING_MARK)) {
-                /* Already processed — check if mode changed */
                 var currentState = el.getAttribute(GREETING_MARK);
                 var desiredState = replaceOn ? 'replace' : 'blur';
+
                 if (currentState === desiredState) continue;
-                /* Mode changed — cleanup this element and re-process */
-                var orig = el.getAttribute(GREETING_ORIG);
-                if (orig !== null) {
-                    el.textContent = orig;
-                    el.removeAttribute(GREETING_ORIG);
+
+                if (currentState === 'replace' && desiredState === 'blur') {
+                    /* Switch: replace → blur without flash */
+                    var orig = el.getAttribute(GREETING_ORIG);
+                    if (orig === null) { el.removeAttribute(GREETING_MARK); }
+                    else {
+                        var tIdx = orig.indexOf(firstName);
+                        if (tIdx !== -1) {
+                            el.setAttribute(GREETING_MARK, 'blur');
+                            el.innerHTML =
+                                esc(orig.substring(0, tIdx)) +
+                                '<span style="filter:blur(12px)!important;user-select:none!important;">' +
+                                esc(firstName) +
+                                '</span>' +
+                                esc(orig.substring(tIdx + firstName.length));
+                        }
+                    }
+                    continue;
                 }
+
+                var orig2 = el.getAttribute(GREETING_ORIG);
+                if (orig2 !== null) { el.textContent = orig2; el.removeAttribute(GREETING_ORIG); }
+                el.removeAttribute(GREETING_MARK);
+                el.style.removeProperty('filter');
+            }
+
+            var text = el.textContent || '';
+            var idx = text.indexOf(firstName);
+            if (idx === -1) continue;
+
+            el.setAttribute(GREETING_ORIG, text);
+
+            if (replaceOn) {
+                el.setAttribute(GREETING_MARK, 'replace');
+                el.textContent = text.replace(new RegExp(firstName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'Legitness');
+                el.style.setProperty('filter', 'none', 'important');
+            } else {
+                el.setAttribute(GREETING_MARK, 'blur');
+                var before = text.substring(0, idx);
+                var after = text.substring(idx + firstName.length);
+                el.innerHTML =
+                    esc(before) +
+                    '<span style="filter:blur(12px)!important;user-select:none!important;">' +
+                    esc(firstName) +
+                    '</span>' +
+                    esc(after);
+            }
+        }
+    };
+
+    HANDLERS.gemini.hoverReveal = function(enabled) {
+        injectStyle('lp-hover-gem', enabled ?
+            '#sidenav-section-content-chats a.mat-mdc-list-item:hover .title-text{filter:none!important;transition:filter 0.15s ease;}' :
+            null
+        );
+    };
+
+    /* ═══════════════════════════════════════════════
+       CHATGPT HANDLERS
+       ═══════════════════════════════════════════════ */
+    HANDLERS.chatgpt = {};
+
+    HANDLERS.chatgpt.replaceName = function(enabled) {
+        profileReplace(enabled, '[data-testid="accounts-profile-button"] div.truncate', 'lp-blurname-gpt');
+    };
+
+    HANDLERS.chatgpt.blurName = function(enabled) {
+        profileBlur(enabled, '[data-testid="accounts-profile-button"] div.truncate', 'lp-blurname-gpt');
+    };
+
+    HANDLERS.chatgpt.activeChat = function(enabled) {
+        injectStyle('lp-active-gpt', enabled ? null :
+            'a[data-active][data-sidebar-item="true"] .truncate > span{filter:none!important;}'
+        );
+    };
+
+    HANDLERS.chatgpt.greetingName = function(settings) {
+        if (!settings.master || settings.rules.profileName === false) {
+            cleanupGreeting();
+            return;
+        }
+
+        var nameEl = document.querySelector('[data-testid="accounts-profile-button"] div.truncate');
+        if (!nameEl) { cleanupGreeting(); return; }
+
+        var fullName = (nameEl.getAttribute('data-lp-replace') || nameEl.textContent || '').trim();
+        var firstName = fullName.split(/\s+/)[0];
+        if (!firstName || firstName.length < 2) { cleanupGreeting(); return; }
+
+        var replaceOn = settings.jsRules.replaceName !== false;
+        var blurOn = settings.jsRules.blurName !== false;
+
+        if (!replaceOn && !blurOn) { cleanupGreeting(); return; }
+
+        var greetingEls = document.querySelectorAll('div.px-1.text-pretty');
+        for (var i = 0; i < greetingEls.length; i++) {
+            var el = greetingEls[i];
+
+            if (el.hasAttribute(GREETING_MARK)) {
+                var currentState = el.getAttribute(GREETING_MARK);
+                var desiredState = replaceOn ? 'replace' : 'blur';
+
+                if (currentState === desiredState) continue;
+
+                if (currentState === 'replace' && desiredState === 'blur') {
+                    var orig = el.getAttribute(GREETING_ORIG);
+                    if (orig === null) { el.removeAttribute(GREETING_MARK); }
+                    else {
+                        var tIdx = orig.indexOf(firstName);
+                        if (tIdx !== -1) {
+                            el.setAttribute(GREETING_MARK, 'blur');
+                            el.innerHTML =
+                                esc(orig.substring(0, tIdx)) +
+                                '<span style="filter:blur(12px)!important;user-select:none!important;">' +
+                                esc(firstName) +
+                                '</span>' +
+                                esc(orig.substring(tIdx + firstName.length));
+                        }
+                    }
+                    continue;
+                }
+
+                var orig2 = el.getAttribute(GREETING_ORIG);
+                if (orig2 !== null) { el.textContent = orig2; el.removeAttribute(GREETING_ORIG); }
                 el.removeAttribute(GREETING_MARK);
                 el.style.removeProperty('filter');
             }
@@ -333,35 +474,6 @@
     };
 
 
-    HANDLERS.gemini.hoverReveal = function(enabled) {
-        injectStyle('lp-hover-gem', enabled ?
-            '#sidenav-section-content-chats a.mat-mdc-list-item:hover .title-text{filter:none!important;transition:filter 0.15s ease;}' :
-            null
-        );
-    };
-
-    /* ═══════════════════════════════════════════════
-       CHATGPT HANDLERS
-       ═══════════════════════════════════════════════ */
-    HANDLERS.chatgpt = {};
-
-    HANDLERS.chatgpt.replaceName = function(enabled) {
-        profileReplace(enabled, '[data-testid="accounts-profile-button"] .truncate');
-    };
-
-    HANDLERS.chatgpt.blurName = function(enabled) {
-        profileBlur(enabled, '[data-testid="accounts-profile-button"] .truncate', 'lp-blurname-gpt');
-    };
-
-    HANDLERS.chatgpt.activeChat = function(enabled) {
-        /*
-         * CSS approach: specificity 0-3-2 > blur's 0-2-2
-         */
-        injectStyle('lp-active-gpt', enabled ? null :
-            'a[data-active][data-sidebar-item="true"] .truncate > span{filter:none!important;}'
-        );
-    };
-
     HANDLERS.chatgpt.hoverReveal = function(enabled) {
         injectStyle('lp-hover-gpt', enabled ?
             'a[data-sidebar-item="true"]:hover .truncate > span{filter:none!important;transition:filter 0.15s ease;}' :
@@ -375,35 +487,104 @@
     HANDLERS.claude = {};
 
     HANDLERS.claude.replaceName = function(enabled) {
-        profileReplace(enabled, 'span.w-full.text-start.block.truncate');
+        profileReplace(enabled, 'span.df-footer-suffix > span.max-w-full', 'lp-blurname-claude');
     };
 
     HANDLERS.claude.blurName = function(enabled) {
-        profileBlur(enabled, 'span.w-full.text-start.block.truncate', 'lp-blurname-claude');
+        profileBlur(enabled, 'span.df-footer-suffix > span.max-w-full', 'lp-blurname-claude');
     };
 
     HANDLERS.claude.activeChat = function(enabled) {
-        /*
-         * CSS approach: specificity 0-3-3 > blur's 0-2-3
-         * Survives Angular re-renders
-         */
         injectStyle('lp-active-claude', enabled ? null :
-            '[data-testid="sidebar-pinned"] a[aria-current="page"] > div > span.truncate,' +
-            '[data-testid="sidebar-recents"] a[aria-current="page"] > div > span.truncate' +
-            '{filter:none!important;}'
+            'a[data-selected="focused"] span.dframe-fade-label > span.inline-block{filter:none!important;}'
         );
     };
 
     HANDLERS.claude.hoverReveal = function(enabled) {
         injectStyle('lp-hover-claude', enabled ?
-            '[data-testid="sidebar-pinned"] a:hover > div > span.truncate,' +
-            '[data-testid="sidebar-recents"] a:hover > div > span.truncate' +
-            '{filter:none!important;transition:filter 0.15s ease;}' :
+            'a[href^="/chat/"]:hover span.dframe-fade-label > span.inline-block{filter:none!important;transition:filter 0.15s ease;}' :
             null
         );
     };
 
-    /* ─── Shared Greeting Helpers ─── */
+    HANDLERS.claude.greetingName = function(settings) {
+        if (!settings.master || settings.rules.profileName === false) {
+            cleanupGreeting();
+            return;
+        }
+
+        var nameEl = document.querySelector('span.df-footer-suffix > span.max-w-full');
+        if (!nameEl) { cleanupGreeting(); return; }
+
+        var origName = (nameEl.getAttribute('data-lp-replace') || nameEl.textContent || '').trim();
+        if (!origName || origName.length < 2) { cleanupGreeting(); return; }
+
+        var replaceOn = settings.jsRules.replaceName !== false;
+        var blurOn = settings.jsRules.blurName !== false;
+
+        if (!replaceOn && !blurOn) { cleanupGreeting(); return; }
+
+        var greetingEls = document.querySelectorAll('[data-new-page-greeting-text]');
+        for (var i = 0; i < greetingEls.length; i++) {
+            var el = greetingEls[i];
+
+            if (el.hasAttribute(GREETING_MARK)) {
+                var currentState = el.getAttribute(GREETING_MARK);
+                var desiredState = replaceOn ? 'replace' : 'blur';
+
+                if (currentState === desiredState) continue;
+
+                if (currentState === 'replace' && desiredState === 'blur') {
+                    var orig = el.getAttribute(GREETING_ORIG);
+                    if (orig === null) { el.removeAttribute(GREETING_MARK); }
+                    else {
+                        var tIdx = orig.indexOf(origName);
+                        if (tIdx !== -1) {
+                            el.setAttribute(GREETING_MARK, 'blur');
+                            el.innerHTML =
+                                esc(orig.substring(0, tIdx)) +
+                                '<span style="filter:blur(12px)!important;user-select:none!important;">' +
+                                esc(origName) +
+                                '</span>' +
+                                esc(orig.substring(tIdx + origName.length));
+                        }
+                    }
+                    continue;
+                }
+
+                var orig2 = el.getAttribute(GREETING_ORIG);
+                if (orig2 !== null) { el.textContent = orig2; el.removeAttribute(GREETING_ORIG); }
+                el.removeAttribute(GREETING_MARK);
+                el.style.removeProperty('filter');
+            }
+
+            var text = el.textContent || '';
+            var idx = text.indexOf(origName);
+            if (idx === -1) continue;
+
+            el.setAttribute(GREETING_ORIG, text);
+
+            if (replaceOn) {
+                el.setAttribute(GREETING_MARK, 'replace');
+                el.textContent = text.replace(new RegExp(origName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), 'Legitness');
+                el.style.setProperty('filter', 'none', 'important');
+            } else {
+                el.setAttribute(GREETING_MARK, 'blur');
+                var before = text.substring(0, idx);
+                var after = text.substring(idx + origName.length);
+                el.innerHTML =
+                    esc(before) +
+                    '<span style="filter:blur(12px)!important;user-select:none!important;">' +
+                    esc(origName) +
+                    '</span>' +
+                    esc(after);
+            }
+        }
+    };
+
+    /* ═══════════════════════════════════════════════
+       SHARED GREETING HELPERS
+       ═══════════════════════════════════════════════ */
     var GREETING_MARK = 'data-lp-greeting-state';
     var GREETING_ORIG = 'data-lp-greeting-orig';
 
@@ -421,71 +602,6 @@
         }
     }
 
-    function applyGreetingReplace(el, origName) {
-        var state = el.getAttribute(GREETING_MARK);
-        if (state === 'replace') return;
-
-        cleanupGreeting();
-        var text = el.textContent;
-        if (text.indexOf(origName) === -1) return;
-
-        el.setAttribute(GREETING_ORIG, text);
-        el.setAttribute(GREETING_MARK, 'replace');
-        el.textContent = text.replace(origName, 'Legitness');
-    }
-
-    function applyGreetingBlur(el, origName) {
-        var state = el.getAttribute(GREETING_MARK);
-        if (state === 'blur') return;
-
-        cleanupGreeting();
-        var text = el.textContent;
-        var idx = text.indexOf(origName);
-        if (idx === -1) return;
-
-        el.setAttribute(GREETING_ORIG, text);
-        el.setAttribute(GREETING_MARK, 'blur');
-        var before = text.substring(0, idx);
-        var after = text.substring(idx + origName.length);
-        el.innerHTML =
-            esc(before) +
-            '<span style="filter:blur(12px)!important;user-select:none!important;">' +
-            esc(origName) +
-            '</span>' +
-            esc(after);
-    }
-
-    HANDLERS.claude.greetingName = function(settings) {
-        var el = getGreetingEl();
-        if (!el) {
-            cleanupGreeting();
-            return;
-        }
-
-        if (!settings.master || settings.rules.profileName === false) {
-            cleanupGreeting();
-            return;
-        }
-
-        /* Get original username from sidebar */
-        var nameEl = document.querySelector('span.w-full.text-start.block.truncate');
-        if (!nameEl) { cleanupGreeting(); return; }
-
-        var origName = (nameEl.getAttribute('data-lp-replace') || nameEl.textContent || '').trim();
-        if (!origName || origName.length < 2) { cleanupGreeting(); return; }
-
-        var replaceOn = settings.jsRules.replaceName !== false;
-        var blurOn = settings.jsRules.blurName !== false;
-
-        if (replaceOn) {
-            applyGreetingReplace(el, origName);
-        } else if (blurOn) {
-            applyGreetingBlur(el, origName);
-        } else {
-            cleanupGreeting();
-        }
-    };
-
     /* ═══════════════════════════════════════════════
        RUN HANDLERS
        ═══════════════════════════════════════════════ */
@@ -493,7 +609,6 @@
         var h = HANDLERS[currentSite.id];
         if (!h) return;
 
-        /* Config jsRules (have toggles in popup) */
         var jsRules = currentSite.config.jsRules || [];
         for (var i = 0; i < jsRules.length; i++) {
             var rule = jsRules[i];
@@ -505,7 +620,6 @@
             try { h[rule.id](on, settings.options); } catch (e) { console.error('[LP]', rule.id, e); }
         }
 
-        /* Internal handlers (receive full settings, no toggle) */
         if (h.dmInfo) {
             try { h.dmInfo(settings); } catch (e) { console.error('[LP] dmInfo', e); }
         }
